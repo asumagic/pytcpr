@@ -68,10 +68,10 @@ class MessageSubscriptionManager:
 
     def __init__(self, mqueue: MultiSubscriberQueue):
         self.mqueue = mqueue
-        self.subscription = self.mqueue._subscribe()
 
     async def __aenter__(self):
-        return self.subscription
+        self._subscription = self.mqueue._subscribe()
+        return self._subscription
 
     async def __aexit__(self, _exc_type, _exc_val, _exc_tb):
-        self.mqueue._unsubscribe(self.subscription)
+        self.mqueue._unsubscribe(self._subscription)

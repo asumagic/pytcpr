@@ -1,6 +1,6 @@
-import functools
-import re
+from dataclasses import dataclass
 
+from typing import List, Type
 
 class ByteStream:
     """\
@@ -31,25 +31,13 @@ class ByteStream:
         return cls(bytes.fromhex(hex))
 
 
-rpc_matcher = re.compile(r"^@pytcpr!(\w+)~(.*)$")
+class Serialized:
+    @classmethod
+    def from_bytestream(cls, stream: ByteStream):
+        return cls()
 
 
-class rpc:
-    def __init__(self, func):
-        functools.update_wrapper(self, func)
-        self.func = func
-
-    def __call__(self, client):
-        subscriber = client.subscriber()
-
-        async def wrapper():
-            async with subscriber as messages:
-                async for message in messages:
-                    # TODO: there is really no reason for every single RPC handler to do that.
-                    match = rpc_matcher.match(message.decode())
-                    if match:
-                        method, arg = match.groups()
-                        if method == self.func.__name__:
-                            await self.func(client, ByteStream.from_hex(arg))
-
-        return wrapper()
+@dataclass
+class EventType:
+    name: str
+    args: List[Type[Serialized]]

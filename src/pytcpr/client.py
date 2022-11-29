@@ -2,7 +2,6 @@ import asyncio
 import logging
 import uuid
 import re
-import functools
 from dataclasses import dataclass
 
 from .mqueue import MultiSubscriberQueue
@@ -43,21 +42,6 @@ class SanitizerError(TCPRError):
     pass
 
 
-class log_consumer:
-    def __init__(self, func):
-        functools.update_wrapper(self, func)
-        self.func = func
-
-    def __call__(self, client):
-        subscriber = client.subscriber()
-
-        async def wrapper():
-            async with subscriber as messages:
-                await self.func(client, messages)
-
-        return wrapper()
-
-
 uuid_generator = uuid.uuid4
 
 
@@ -69,21 +53,19 @@ protocol_sanitizer = re.compile(b"\n|\r|\x00")
 
 
 class TCPRClient:
-    def __init__(self, server_info: ServerInfo, reader, writer):
-        self.info = server_info
+    def __init__(self, info: ServerInfo, reader, writer):
+        self._info = info
         self._reader = reader
         self._writer = writer
         self._mqueue = MultiSubscriberQueue()
 
     @classmethod
-    async def connect(cls, server_info: ServerInfo):
-        logging.info(f"Initiating connection to {server_info.host}:{server_info.port}")
-        reader, writer = await asyncio.open_connection(
-            server_info.host, server_info.port
-        )
-        logging.info(f"Connected to {server_info.host}:{server_info.port}")
+    async def connect(cls, info: ServerInfo):
+        logging.info(f"Initiating connection to {info.host}:{info.port}")
+        reader, writer = await asyncio.open_connection(info.host, info.port)
+        logging.info(f"Connected to {info.host}:{info.port}")
 
-        client = cls(server_info, reader, writer)
+        client = cls(info, reader, writer)
 
         return client
 
@@ -93,22 +75,25 @@ class TCPRClient:
         logging.info("Authentication successful")
 
     async def ping(self):
-        ping_challenge = make_random_challenge().encode()
-        pong_script = f"tcpr('{ping_challenge}')".encode()
+        ping_challenge = make_random_challenge()
+        pong_script = f"tcpr('{ping_challenge}')"
 
         logging.debug(f"Submitting ping challenge: {ping_challenge}")
 
         try:
             await asyncio.wait_for(
-                self.write_line_and_block_until_message(pong_script, ping_challenge), 15
+                self.write_line_and_block_until_message(
+                    pong_script.encode(), ping_challenge.encode()
+                ),
+                15,
             )
         except asyncio.TimeoutError as e:
             raise ConnectionResetError("Server did not respond to ping") from e
 
         logging.debug(f"Ping challenge {ping_challenge} passed")
 
-    async def run(self, password, services):
-        service_coros = [service(self) for service in services]
+    async def run(self, password, router):
+        router_aw = router(self)
         sink_task = asyncio.create_task(self._read_and_dispatch_messages())
 
         authed = False
@@ -119,7 +104,7 @@ class TCPRClient:
             await self._auth(password.encode())
             authed = True
 
-            await asyncio.gather(*service_coros)
+            await router_aw
 
         try:
             await asyncio.gather(client_flow(), sink_task)
@@ -131,10 +116,6 @@ class TCPRClient:
             raise
         finally:
             logging.info("Shutting down")
-
-            for service_coro in service_coros:
-                service_coro.close()
-
             sink_task.cancel()
 
     async def _read_and_dispatch_messages(self):
