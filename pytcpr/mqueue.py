@@ -16,7 +16,7 @@ class MultiSubscriberQueue:
         self._subscribers.remove(subscriber)
 
     def subscriber(self):
-        return MessageSubscriber(self)
+        return MessageSubscriptionManager(self)
 
     async def submit(self, message):
         for subscriber in self._subscribers:
@@ -61,7 +61,9 @@ class CancellableSubscriber:
         self.queue.put_nowait(None)
 
 
-class MessageSubscriber:
+class MessageSubscriptionManager:
+    """Context manager for message subscription."""
+
     def __init__(self, mqueue: MultiSubscriberQueue):
         self.mqueue = mqueue
         self.subscription = self.mqueue._subscribe()
