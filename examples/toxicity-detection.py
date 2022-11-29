@@ -14,6 +14,7 @@ torch.set_num_threads(1)
 
 toxic_model = Detoxify("original")
 
+
 @rpc
 async def chat_filter(client, arg):
     user = arg.read_string()
@@ -22,11 +23,11 @@ async def chat_filter(client, arg):
     toxicity = toxic_model.predict(message)
 
     score = (
-        toxicity["toxicity"]        * 0.15 +
-        toxicity["severe_toxicity"] * 0.8 +
-        toxicity["identity_attack"] * 1.0 +
-        toxicity["insult"]          * 0.8 +
-        toxicity["obscene"]         * 0.15
+        toxicity["toxicity"] * 0.15
+        + toxicity["severe_toxicity"] * 0.8
+        + toxicity["identity_attack"] * 1.0
+        + toxicity["insult"] * 0.8
+        + toxicity["obscene"] * 0.15
     )
 
     logging.info(f"msg '{user}': '{message}' ({score})")
@@ -38,5 +39,6 @@ async def chat_filter(client, arg):
 async def main():
     client = await TCPRClient.connect(ServerInfo("test", "127.0.0.1", 50303))
     await client.run(password="1337", services=[chat_filter])
+
 
 asyncio.run(main())

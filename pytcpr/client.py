@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from .mqueue import MultiSubscriberQueue
 from .parsing import timestamp_matcher
 
+
 @dataclass
 class ServerInfo:
     name: str
@@ -23,6 +24,7 @@ class ServerInfo:
 class TCPRError(Exception):
     """\
     Error specific to TCPR low-level connectivity."""
+
     pass
 
 
@@ -30,12 +32,14 @@ class AuthenticationError(TCPRError):
     """\
     Error raised when the TCPR client has failed to authenticate.
     This is generally raised unconditionally when the server dropped the connection during authentication."""
+
     pass
 
 
 class SanitizerError(TCPRError):
     """\
     Error raised at serialization/deserialization when a outbound/inbound message is found to be broken."""
+
     pass
 
 
@@ -74,7 +78,9 @@ class TCPRClient:
     @classmethod
     async def connect(cls, server_info: ServerInfo):
         logging.info(f"Initiating connection to {server_info.host}:{server_info.port}")
-        reader, writer = await asyncio.open_connection(server_info.host, server_info.port)
+        reader, writer = await asyncio.open_connection(
+            server_info.host, server_info.port
+        )
         logging.info(f"Connected to {server_info.host}:{server_info.port}")
 
         client = cls(server_info, reader, writer)
@@ -94,8 +100,7 @@ class TCPRClient:
 
         try:
             await asyncio.wait_for(
-                self.write_line_and_block_until_message(pong_script, ping_challenge),
-                15
+                self.write_line_and_block_until_message(pong_script, ping_challenge), 15
             )
         except asyncio.TimeoutError as e:
             raise ConnectionResetError("Server did not respond to ping") from e
@@ -120,7 +125,9 @@ class TCPRClient:
             await asyncio.gather(client_flow(), sink_task)
         except ConnectionResetError as e:
             if not authed:
-                raise AuthenticationError("Server rejected us during auth: wrong password?") from e
+                raise AuthenticationError(
+                    "Server rejected us during auth: wrong password?"
+                ) from e
             raise
         finally:
             logging.info("Shutting down")
@@ -150,10 +157,10 @@ class TCPRClient:
 
     async def write_line_and_read_messages(self, line: bytes):
         """Write a line and read all messages after sending the line.
-        
+
         Note that this may yield messages that were sent before the line was sent.
         This is only useful when future responses can be recognized by their content (e.g. pings).
-        
+
         Use write_script_and_read_response() if you need accurate responses."""
 
         async with self.subscriber() as messages:
@@ -217,8 +224,9 @@ class TCPRClient:
 
         if len(line) + 1 >= 16384:
             raise SanitizerError(
-                f"Line {line[:100]}... is too long. "\
-                f"The TCPR server has a 16383 byte limit on received messages, including the newline.")
+                f"Line {line[:100]}... is too long. "
+                f"The TCPR server has a 16383 byte limit on received messages, including the newline."
+            )
 
         # NOTE: KAG TCPR supports both `\r\n` and `\n` line endings.
         # The client decides which one shall be used during the entire session:

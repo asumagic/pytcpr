@@ -1,9 +1,11 @@
 import asyncio
 
+
 class MultiSubscriberQueue:
     """\
     A queue allowing multiple "subscribers" to consume the same stream of data in parallel.
     Subscribers can be added and removed on the fly."""
+
     def __init__(self):
         self._subscribers = set()
 

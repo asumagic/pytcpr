@@ -1,6 +1,7 @@
 import functools
 import re
 
+
 class ByteStream:
     """\
     Class for representing and deserializing KAG CBitStream objects.
@@ -16,12 +17,12 @@ class ByteStream:
 
     def read_string(self):
         length = self.read_int(2)
-        string = self.data[self.pos:self.pos + length].decode()
+        string = self.data[self.pos : self.pos + length].decode()
         self.pos += length
         return string
 
     def read_int(self, n_bytes):
-        value = int.from_bytes(self.data[self.pos:self.pos + n_bytes], "big")
+        value = int.from_bytes(self.data[self.pos : self.pos + n_bytes], "big")
         self.pos += n_bytes
         return value
 
