@@ -5,7 +5,7 @@ import re
 import functools
 from dataclasses import dataclass
 
-from .mqueue import MultisubscriberQueue
+from .mqueue import MultiSubscriberQueue
 from .parsing import timestamp_matcher
 
 @dataclass
@@ -69,7 +69,7 @@ class TCPRClient:
         self.info = server_info
         self._reader = reader
         self._writer = writer
-        self._mqueue = MultisubscriberQueue()
+        self._mqueue = MultiSubscriberQueue()
 
     @classmethod
     async def connect(cls, server_info: ServerInfo):

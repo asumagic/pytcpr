@@ -1,26 +1,29 @@
 import asyncio
 
-class MultisubscriberQueue:
+class MultiSubscriberQueue:
+    """\
+    A queue allowing multiple "subscribers" to consume the same stream of data in parallel.
+    Subscribers can be added and removed on the fly."""
     def __init__(self):
-        self.subscribers = set()
+        self._subscribers = set()
 
     def _subscribe(self):
         subscriber = CancellableSubscriber(asyncio.Queue())
-        self.subscribers.add(subscriber)
+        self._subscribers.add(subscriber)
         return subscriber
 
     def _unsubscribe(self, subscriber):
-        self.subscribers.remove(subscriber)
+        self._subscribers.remove(subscriber)
 
     def subscriber(self):
         return MessageSubscriber(self)
 
     async def submit(self, message):
-        for subscriber in self.subscribers:
+        for subscriber in self._subscribers:
             await subscriber.queue.put(message)
 
     def terminate(self):
-        for subscriber in self.subscribers:
+        for subscriber in self._subscribers:
             subscriber.cancel()
 
 
@@ -59,7 +62,7 @@ class CancellableSubscriber:
 
 
 class MessageSubscriber:
-    def __init__(self, mqueue: MultisubscriberQueue):
+    def __init__(self, mqueue: MultiSubscriberQueue):
         self.mqueue = mqueue
         self.subscription = self.mqueue._subscribe()
 
