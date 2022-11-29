@@ -6,7 +6,7 @@ import torch
 from pytcpr.client import TCPRClient, ServerInfo
 from pytcpr.protocol import rpc
 
-from .common import common_init_stuff
+from common import common_init_stuff
 
 common_init_stuff()
 
